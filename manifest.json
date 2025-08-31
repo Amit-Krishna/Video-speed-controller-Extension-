@@ -1,0 +1,30 @@
+
+{
+  "manifest_version":3,
+  "name": "__MSG_extName__",
+  "default_locale": "en",
+  "description": "__MSG_extDescription__",
+  "version": "1.0.0",
+  "permissions": [ "scripting", "activeTab", "storage" ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "options_page": "options.html",
+  "background": { "service_worker": "background.js" },
+  "commands": {
+    "increase-speed": { "suggested_key": { "default": "Ctrl+Shift+Period" }, "description": "Increase speed" },
+    "decrease-speed": { "suggested_key": { "default": "Ctrl+Shift+Comma" }, "description": "Decrease speed" },
+    "reset-speed": { "suggested_key": { "default": "Ctrl+Shift+0" }, "description": "Reset speed" }
+  },
+  "web_accessible_resources": [ { "resources": [ "hud.html", "hud.css" ], "matches": [ "<all_urls>" ] } ],
+  "content_scripts": [ { "matches": ["<all_urls>"], "js": ["content.js"], "run_at": "document_idle" } ]
+}

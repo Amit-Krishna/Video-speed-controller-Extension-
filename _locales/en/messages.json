@@ -1,0 +1,146 @@
+{
+  "extName": {
+    "message": "Video Speed Controller",
+    "description": "The name of the extension."
+  },
+  "extDescription": {
+    "message": "Control the playback speed of HTML5 videos on any page with presets and keyboard shortcuts.",
+    "description": "The description of the extension."
+  },
+  "popupTitle": {
+    "message": "Video Speed",
+    "description": "The main title in the popup."
+  },
+  "resetButton": {
+    "message": "Reset",
+    "description": "The text for the reset button."
+  },
+  "configureShortcuts": {
+    "message": "Configure Shortcuts",
+    "description": "Link text to the shortcuts page."
+  },
+  "disableOnSite": {
+    "message": "Disable on $hostname$",
+    "description": "Button text to disable the extension on the current site.",
+    "placeholders": {
+      "hostname": { "content": "$1", "example": "www.youtube.com" }
+    }
+  },
+  "enableOnSite": {
+    "message": "Enable on $hostname$",
+    "description": "Button text to enable the extension on the current site.",
+    "placeholders": {
+      "hostname": { "content": "$1", "example": "www.youtube.com" }
+    }
+  },
+  "optionsTitle": {
+    "message": "Options",
+    "description": "The main title of the options page."
+  },
+  "behaviorHeader": {
+    "message": "Behavior",
+    "description": "Header for the behavior section in options."
+  },
+  "speedStepLabel": {
+    "message": "Speed Step Amount:",
+    "description": "Label for the speed step input in options."
+  },
+  "perSiteHeader": {
+    "message": "Per-Site Speed Defaults",
+    "description": "Header for the per-site speed rules section."
+  },
+  "perSiteDescription": {
+    "message": "Set a default speed for specific websites. This will override the last-used global speed.",
+    "description": "Description for the per-site rules section."
+  },
+  "hostnamePlaceholder": {
+    "message": "e.g., www.youtube.com",
+    "description": "Placeholder for the hostname input."
+  },
+  "speedPlaceholder": {
+    "message": "Speed (e.g., 1.5)",
+    "description": "Placeholder for the speed input."
+  },
+  "addRuleButton": {
+    "message": "Add Rule",
+    "description": "Button text for adding a new speed rule."
+  },
+  "deleteButton": {
+    "message": "Delete",
+    "description": "Button text for deleting a rule."
+  },
+  "removeButton": {
+    "message": "Remove",
+    "description": "Button text for removing an excluded site."
+  },
+  "excludedSitesHeader": {
+    "message": "Excluded Sites",
+    "description": "Header for the excluded sites section."
+  },
+  "excludedSitesDescription": {
+    "message": "The extension will not run on these websites. Add a hostname to disable it on that site.",
+    "description": "Description for the excluded sites section."
+  },
+  "excludeSiteButton": {
+    "message": "Exclude Site",
+    "description": "Button text for excluding a site."
+  },
+  "advancedHeader": {
+    "message": "Advanced",
+    "description": "Header for the advanced settings section."
+  },
+  "resetDescription": {
+    "message": "This will clear all saved per-site rules, the last-used global speed, and all saved HUD positions.",
+    "description": "Description for the reset all settings button."
+  },
+  "resetAllButton": {
+    "message": "Reset All Settings",
+    "description": "Button text for resetting all settings."
+  },
+  "statusSaved": {
+    "message": "Saved.",
+    "description": "A status message indicating success."
+  },
+  "statusRuleDeleted": {
+    "message": "Rule deleted.",
+    "description": "Status message."
+  },
+  "statusSiteRemoved": {
+    "message": "Site removed from exclusion list.",
+    "description": "Status message."
+  },
+  "statusAlreadyExcluded": {
+    "message": "This site is already on the exclusion list.",
+    "description": "Status message."
+  },
+  "statusSiteExcluded": {
+    "message": "Site added to exclusion list.",
+    "description": "Status message."
+  },
+   "statusAllReset": {
+    "message": "All settings have been reset.",
+    "description": "Status message."
+  },
+
+  "confirmResetAll": {
+    "message": "Are you sure you want to delete ALL extension settings? This cannot be undone.",
+    "description": "The confirmation text when a user tries to reset all settings."
+  },
+
+  "statusFillFields": {
+    "message": "Please fill in all fields.",
+    "description": "An error message when a form is incomplete."
+  },
+   "speedStepLabel2": {
+    "message": "Speed Step Amount:",
+    "description": "Label for the speed step input in options."
+  },
+  "skipAmountLabel": {
+    "message": "Skip/Replay Amount (seconds):",
+    "description": "Label for the skip/replay amount input in options."
+  },
+  "skipAmountTitle": {
+    "message": "The number of seconds to jump forward or backward.",
+    "description": "Tooltip for the skip amount input."
+  }
+}

@@ -1,0 +1,97 @@
+body {
+  font-family: Arial, sans-serif;
+  width: 250px;
+  padding: 10px;
+  text-align: center;
+}
+
+h1 {
+  font-size: 16px;
+  margin-top: 0;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+input[type="range"] {
+  width: 150px;
+}
+
+#speedValue {
+  font-weight: bold;
+  font-size: 14px;
+  min-width: 40px; 
+}
+
+.presets {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.presets button {
+  border: 1px solid #ccc;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.presets button:hover {
+  background-color: #e0e0e0;
+}
+
+.presets button.reset {
+  border-color: #999;
+  font-weight: bold;
+}
+
+.footer {
+  margin-top: 15px;
+  border-top: 1px solid #eee;
+  padding-top: 8px;
+}
+
+.footer a {
+  color: #007bff;
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}
+
+.site-controls {
+  margin-top: 15px;
+  border-top: 1px solid #eee;
+  padding-top: 8px;
+}
+
+.site-controls button {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.site-controls button.enabled {
+  background-color: #f8d7da; 
+  color: #721c24;
+  border-color: #f5c6cb;
+}
+
+.site-controls button.disabled {
+  background-color: #d4edda; 
+  color: #155724;
+  border-color: #c3e6cb;
+}

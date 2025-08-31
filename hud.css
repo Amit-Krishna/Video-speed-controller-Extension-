@@ -1,0 +1,49 @@
+/* File: hud.css (New version with auto-hide styles) */
+#vsc-hud-container {
+  position: fixed;
+  z-index: 2147483647;
+  background-color: rgba(0, 0, 0, 0.75);
+  color: white;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: grab;
+  user-select: none;
+  
+  /* --- NEW STYLES for auto-hiding --- */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+  pointer-events: none; 
+}
+
+/* "visible" state */
+#vsc-hud-container.vsc-hud-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto; 
+}
+
+/* --- The rest of the styles are unchanged --- */
+.vsc-speed-display {
+  font-weight: bold;
+  min-width: 50px;
+  text-align: center;
+}
+
+.vsc-controls button {
+  background-color: #555;
+  color: white;
+  border: 1px solid #777;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.vsc-controls button:hover {
+  background-color: #777;
+}

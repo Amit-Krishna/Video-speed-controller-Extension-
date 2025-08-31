@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title data-i18n-content="optionsTitle"></title>
+    <link rel="stylesheet" href="options.css">
+</head>
+<body>
+    <div class="container">
+        <h1 data-i18n-content="optionsTitle"></h1>
+         <section>
+            <h2 data-i18n-content="behaviorHeader"></h2>
+            <div class="setting-item">
+                <label for="speed-step-input" data-i18n-content="speedStepLabel"></label>
+                <input type="number" id="speed-step-input" min="0.01" max="1" step="0.01" title="The amount to increase or decrease speed with each click or shortcut.">
+            </div>
+            <div class="setting-item">
+                <label for="skip-amount-input" data-i18n-content="skipAmountLabel"></label>
+                <input type="number" id="skip-amount-input" min="1" max="60" step="1" data-i18n-title="skipAmountTitle">
+            </div>
+        </section>
+         
+        <section>
+            <h2 data-i18n-content="perSiteHeader"></h2>
+            <p data-i18n-content="perSiteDescription"></p>
+            
+            <form id="add-rule-form">
+                <div class="form-group">
+                    <input type="text" id="hostname-input" data-i18n-placeholder="hostnamePlaceholder" required>
+                    <input type="number" id="speed-input" min="0.1" max="16" step="0.05" data-i18n-placeholder="speedPlaceholder" required>
+                    <button type="submit" data-i18n-content="addRuleButton"></button>
+                </div>
+            </form>
+            
+            <div id="rules-list">
+            </div>
+        </section>
+
+         <section id="excluded-sites-section">
+            <h2 data-i18n-content="excludedSitesHeader"></h2>
+            <p data-i18n-content="excludedSitesDescription"></p>
+            
+            <form id="add-exclusion-form">
+                <div class="form-group">
+                    <input type="text" id="exclusion-input" data-i18n-placeholder="hostnamePlaceholder" required>
+                    <button type="submit" data-i18n-content="excludeSiteButton"></button>
+                </div>
+            </form>
+            
+            <div id="excluded-sites-list">
+            </div>
+        </section>
+
+         <section class="danger-zone">
+            <h2 data-i18n-content="advancedHeader"></h2>
+            <p data-i18n-content="resetDescription"></p>
+            <button id="reset-all-settings" class="danger-btn" data-i18n-content="resetAllButton"></button>
+        </section>
+
+        <p id="status-message"></p>
+    </div>
+    <script src="localize.js"></script>
+    <script src="options.js"></script>
+</body>
+</html>
