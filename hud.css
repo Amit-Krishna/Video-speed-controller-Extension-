@@ -1,7 +1,6 @@
-/* File: hud.css (New version with auto-hide styles) */
 #vsc-hud-container {
   position: fixed;
-  z-index: 2147483647;
+  z-index: 2147483647 !important; /* Added !important for robustness */
   background-color: rgba(0, 0, 0, 0.75);
   color: white;
   border-radius: 8px;
@@ -14,28 +13,21 @@
   cursor: grab;
   user-select: none;
   
-  /* --- NEW STYLES for auto-hiding --- */
+  /* Auto-hiding styles */
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
   pointer-events: none; 
 }
 
-/* "visible" state */
+/* This class will be toggled by JavaScript to show the HUD */
 #vsc-hud-container.vsc-hud-visible {
     opacity: 1;
     visibility: visible;
     pointer-events: auto; 
 }
 
-/* --- The rest of the styles are unchanged --- */
-.vsc-speed-display {
-  font-weight: bold;
-  min-width: 50px;
-  text-align: center;
-}
-
-.vsc-controls button {
+#vsc-hud-container button {
   background-color: #555;
   color: white;
   border: 1px solid #777;
@@ -44,6 +36,12 @@
   padding: 4px 8px;
 }
 
-.vsc-controls button:hover {
+#vsc-hud-container button:hover {
   background-color: #777;
+}
+
+#vsc-hud-speed {
+  font-weight: bold;
+  min-width: 50px;
+  text-align: center;
 }

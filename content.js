@@ -1,23 +1,15 @@
-// File: content.js (Complete version with Site Exclusion)
-
 // --- INITIALIZATION CHECK (GATEKEEPER) ---
-// This async IIFE (Immediately Invoked Function Expression) acts as the main gatekeeper.
-// It checks if the current site is excluded before running any of the speed control logic.
 (async () => {
   try {
     const data = await chrome.storage.sync.get(['excludedSites']);
     const excludedSites = data.excludedSites || [];
     const currentHostname = window.location.hostname;
 
-    // If the current website is in our exclusion list, stop the script immediately.
     if (excludedSites.includes(currentHostname)) {
       console.log(`Video Speed Controller is disabled on ${currentHostname}.`);
       return;
     }
-    
-    // If the site is not excluded, proceed to run the main controller logic.
     runSpeedController();
-
   } catch (error) {
     console.error("Video Speed Controller: Error during initialization check.", error);
   }
@@ -25,71 +17,37 @@
 
 
 // --- MAIN LOGIC WRAPPER ---
-// All of the extension's active functionality is contained within this function.
-// It will only be called if the site is not on the exclusion list.
 function runSpeedController() {
 
+  // --- STATE VARIABLES ---
   let desiredSpeed = 1.0;
   let speedStep = 0.10;
-let skipAmount = 5;
+  let skipAmount = 5;
+  let activeVideoContainers = new Set();
+  let hudElement = null;
 
- // --- NEW: HUD Visibility Logic ---
-    let hideHudTimeout;
-
-    // This function makes the HUD visible and cancels any pending hide command.
-    const showHud = () => {
-        const hud = document.getElementById('vsc-hud-container');
-        if (hud) {
-            clearTimeout(hideHudTimeout);
-            hud.classList.add('vsc-hud-visible');
-        }
-    };
-
-    // This function starts the 2-second countdown to hide the HUD.
-    const startHideTimer = () => {
-        clearTimeout(hideHudTimeout);
-        hideHudTimeout = setTimeout(() => {
-            const hud = document.getElementById('vsc-hud-container');
-            if (hud) {
-                hud.classList.remove('vsc-hud-visible');
-            }
-        }, 2000); // Hide after 2 seconds
-    };
-    
-    // Attaches all necessary visibility events to a given element (video or HUD).
-    const attachHudVisibilityEvents = (element) => {
-        if (element.getAttribute('data-vsc-events-attached')) return;
-        element.setAttribute('data-vsc-events-attached', 'true');
-
-        // Show the HUD instantly when the mouse enters the element's area.
-        element.addEventListener('mouseenter', showHud);
-
-        // While the mouse is moving over the element, continuously reset the hide timer.
-        element.addEventListener('mousemove', () => {
-            showHud(); // Keep it visible
-            startHideTimer(); // And reset the hide timer
-        });
-
-        // When the mouse leaves the element's area, start the hide timer one last time.
-        element.addEventListener('mouseleave', startHideTimer);
-    };
-   // --- DEBOUNCE UTILITY FUNCTION ---
-  // This function prevents a function from being called too frequently.
+  // --- UTILITIES ---
   const debounce = (func, delay) => {
     let timeoutId;
     return (...args) => {
       clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        func.apply(this, args);
-      }, delay);
+      timeoutId = setTimeout(() => { func.apply(this, args); }, delay);
     };
   };
 
-   // *** NEW FLAG to prevent storage listener feedback loop ***
-  let isLocalChange = false;
+  const throttle = (func, limit) => {
+    let inThrottle;
+    return function() {
+      const args = arguments;
+      const context = this;
+      if (!inThrottle) {
+        func.apply(context, args);
+        inThrottle = true;
+        setTimeout(() => inThrottle = false, limit);
+      }
+    };
+  };
 
-  // --- HELPER FUNCTION: Deep Media Query ---
-  // Recursively searches for video/audio elements, including inside Shadow DOMs.
   const queryAllMediaDeep = (node = document.body) => {
     let media = Array.from(node.querySelectorAll('video, audio'));
     const elementsWithShadowRoot = node.querySelectorAll('*');
@@ -98,62 +56,102 @@ let skipAmount = 5;
         media = media.concat(queryAllMediaDeep(el.shadowRoot));
       }
     }
-    return [...new Set(media)]; // Return a unique set of elements
-  };
-  // *** NEW FUNCTION: Skip/Replay ***
-  const skip = (seconds) => {
-    queryAllMediaDeep().forEach(media => {
-      // Ensure we don't go past the beginning or end of the media
-      media.currentTime = Math.max(0, Math.min(media.duration, media.currentTime + seconds));
-    });
+    return [...new Set(media)];
   };
 
-  // --- HUD HELPER FUNCTIONS ---
+  // --- HUD VISIBILITY LOGIC ---
+  let hideHudTimeout;
+  const showHud = () => {
+    if (hudElement) {
+      clearTimeout(hideHudTimeout);
+      hudElement.classList.add('vsc-hud-visible');
+    }
+  };
+  
+  const startHideTimer = (duration) => {
+    clearTimeout(hideHudTimeout);
+    hideHudTimeout = setTimeout(() => {
+        if (hudElement) {
+            hudElement.classList.remove('vsc-hud-visible');
+        }
+    }, duration);
+  };
+  
+  // --- CORE ACTIONS ---
+  const skip = (seconds) => {
+    queryAllMediaDeep().forEach(media => {
+      // FIX #1: Safety check to prevent crash if video duration isn't loaded yet.
+      if (isFinite(media.duration)) {
+        media.currentTime = Math.max(0, Math.min(media.duration, media.currentTime + seconds));
+      }
+    });
+    showHud();
+    startHideTimer(5000);
+  };
+
   const updateHudDisplay = () => {
-    const speedDisplay = document.getElementById('vsc-hud-speed');
-    if (speedDisplay) {
-      speedDisplay.textContent = `${desiredSpeed.toFixed(2)}x`;
+    if (hudElement) {
+      const speedDisplay = hudElement.querySelector('#vsc-hud-speed');
+      if (speedDisplay) {
+        speedDisplay.textContent = `${desiredSpeed.toFixed(2)}x`;
+      }
     }
   };
 
+  const _setSpeedForAllMedia = (newSpeed) => {
+    const clampedSpeed = Math.max(0.1, Math.min(newSpeed, 16.0));
+    desiredSpeed = clampedSpeed;
+    queryAllMediaDeep().forEach(media => { media.playbackRate = desiredSpeed; });
+
+    if (chrome.runtime?.id) {
+        chrome.storage.sync.set({ 'videoSpeed': desiredSpeed });
+        chrome.runtime.sendMessage({ action: 'updateBadge', speed: desiredSpeed });
+    }
+    updateHudDisplay();
+    showHud();
+    startHideTimer(5000);
+  };
+  const setSpeedForAllMedia = debounce(_setSpeedForAllMedia, 50);
+
+  // --- HUD CREATION & MANAGEMENT ---
   const createHud = async () => {
     if (document.getElementById('vsc-hud-container')) return;
     try {
-      const hudHtmlUrl = chrome.runtime.getURL('hud.html');
-      const hudCssUrl = chrome.runtime.getURL('hud.css');
-      const [htmlContent, cssContent] = await Promise.all([
-        fetch(hudHtmlUrl).then(res => res.text()),
-        fetch(hudCssUrl).then(res => res.text())
-      ]);
-
       const hudContainer = document.createElement('div');
       hudContainer.id = 'vsc-hud-container';
-      hudContainer.innerHTML = htmlContent;
+      hudContainer.innerHTML = `
+        <div id="vsc-hud-speed" style="font-weight: bold; min-width: 50px; text-align: center;">1.00x</div>
+        <div id="vsc-hud-controls" style="display: flex; gap: 6px;">
+          <button id="vsc-hud-replay" title="Replay 5 seconds" aria-label="Replay 5 seconds">«</button>
+          <button id="vsc-hud-decrease" title="Decrease speed" aria-label="Decrease speed">-</button>
+          <button id="vsc-hud-reset" title="Reset speed" aria-label="Reset speed">Reset</button>
+          <button id="vsc-hud-increase" title="Increase speed" aria-label="Increase speed">+</button>
+          <button id="vsc-hud-skip" title="Skip 5 seconds" aria-label="Skip 5 seconds">»</button>
+        </div>`;
+      
       document.body.appendChild(hudContainer);
-
-      const styleElement = document.createElement('style');
-      styleElement.textContent = cssContent;
-      document.head.appendChild(styleElement);
-
-      attachHudVisibilityEvents(document.getElementById('vsc-hud-container'));
-      hudContainer.addEventListener('mouseenter', showHud);
-      hudContainer.addEventListener('mouseleave', startHideTimer);
+      hudElement = hudContainer;
       
       let isDragging = false, offsetX = 0, offsetY = 0;
       const storageKey = `vsc_hud_pos_${window.location.hostname}`;
 
-      chrome.storage.sync.get(storageKey, (data) => {
-        if (data[storageKey]) {
-          hudContainer.style.top = data[storageKey].top;
-          hudContainer.style.left = data[storageKey].left;
-        } else {
-          hudContainer.style.top = '10px';
-          hudContainer.style.left = '10px';
-        }
-      });
+      if (chrome.runtime?.id) {
+        chrome.storage.sync.get(storageKey, (data) => {
+            if (chrome.runtime.lastError) return;
+            if (data[storageKey]?.top && data[storageKey]?.left) {
+              hudContainer.style.top = data[storageKey].top;
+              hudContainer.style.left = data[storageKey].left;
+            } else {
+              hudContainer.style.top = '10px';
+              hudContainer.style.left = '10px';
+            }
+        });
+      }
 
       const onMouseDown = (e) => {
-        if (e.target.tagName === 'BUTTON') return;
+        // FIX #2: Don't start dragging if the context is invalidated.
+        if (!chrome.runtime?.id || e.target.tagName === 'BUTTON') return;
+        
         isDragging = true;
         hudContainer.style.cursor = 'grabbing';
         offsetX = e.clientX - hudContainer.getBoundingClientRect().left;
@@ -164,9 +162,8 @@ let skipAmount = 5;
 
       const onMouseMove = (e) => {
         if (!isDragging) return;
-        const rect = hudContainer.getBoundingClientRect();
-        let newLeft = Math.max(0, Math.min(e.clientX - offsetX, window.innerWidth - rect.width));
-        let newTop = Math.max(0, Math.min(e.clientY - offsetY, window.innerHeight - rect.height));
+        let newLeft = Math.max(0, Math.min(e.clientX - offsetX, window.innerWidth - hudContainer.offsetWidth));
+        let newTop = Math.max(0, Math.min(e.clientY - offsetY, window.innerHeight - hudContainer.offsetHeight));
         hudContainer.style.left = `${newLeft}px`;
         hudContainer.style.top = `${newTop}px`;
       };
@@ -176,87 +173,100 @@ let skipAmount = 5;
         hudContainer.style.cursor = 'grab';
         document.removeEventListener('mousemove', onMouseMove);
         const finalPosition = { top: hudContainer.style.top, left: hudContainer.style.left };
-        chrome.storage.sync.set({ [storageKey]: finalPosition });
+        
+        if (chrome.runtime?.id) {
+            chrome.storage.sync.set({ [storageKey]: finalPosition });
+        }
       };
       hudContainer.addEventListener('mousedown', onMouseDown);
       
-      document.getElementById('vsc-hud-increase').addEventListener('click', () => setSpeedForAllMedia(desiredSpeed + speedStep));
-      document.getElementById('vsc-hud-decrease').addEventListener('click', () => setSpeedForAllMedia(desiredSpeed - speedStep));
-      document.getElementById('vsc-hud-reset').addEventListener('click', () => setSpeedForAllMedia(1.0));
-
-       // Add event listeners to buttons
-      document.getElementById('vsc-hud-increase').addEventListener('click', () => setSpeedForAllMedia(desiredSpeed + speedStep));
-      document.getElementById('vsc-hud-decrease').addEventListener('click', () => setSpeedForAllMedia(desiredSpeed - speedStep));
-      document.getElementById('vsc-hud-reset').addEventListener('click', () => setSpeedForAllMedia(1.0));
-      
-      // Add listeners for our new buttons
-      document.getElementById('vsc-hud-replay').addEventListener('click', () => skip(-skipAmount));
-      document.getElementById('vsc-hud-skip').addEventListener('click', () => skip(skipAmount));
+      hudContainer.querySelector('#vsc-hud-increase').addEventListener('click', () => setSpeedForAllMedia(desiredSpeed + speedStep));
+      hudContainer.querySelector('#vsc-hud-decrease').addEventListener('click', () => setSpeedForAllMedia(desiredSpeed - speedStep));
+      hudContainer.querySelector('#vsc-hud-reset').addEventListener('click', () => setSpeedForAllMedia(1.0));
+      hudContainer.querySelector('#vsc-hud-replay').addEventListener('click', () => skip(-skipAmount));
+      hudContainer.querySelector('#vsc-hud-skip').addEventListener('click', () => skip(skipAmount));
       
       updateHudDisplay();
-    } catch (error) {
-      console.error('Video Speed Controller: Failed to create HUD.', error);
+    } catch (error) { console.error('Video Speed Controller: Failed to create HUD.', error); }
+  };
+
+  // --- VIDEO DETECTION & MOUSE LISTENER LOGIC ---
+  const findInteractiveContainer = (mediaElement) => {
+    const twitterComponent = mediaElement.closest('[data-testid="videoComponent"]');
+    if (twitterComponent) return twitterComponent;
+    return mediaElement.parentElement || mediaElement;
+  };
+
+  const runDetection = () => {
+    const mediaElements = queryAllMediaDeep();
+    if (mediaElements.length > 0) {
+      createHud();
+      const currentContainers = new Set();
+      mediaElements.forEach(media => {
+        if (!media.getAttribute('data-vsc-processed')) {
+            media.setAttribute('data-vsc-processed', 'true');
+            media.addEventListener('ratechange', () => { if (media.playbackRate !== desiredSpeed) media.playbackRate = desiredSpeed; });
+            media.addEventListener('loadeddata', () => { media.playbackRate = desiredSpeed; });
+        }
+        const container = findInteractiveContainer(media);
+        currentContainers.add(container);
+      });
+      activeVideoContainers = currentContainers;
+    } else {
+      activeVideoContainers.clear();
     }
   };
 
-  // --- CORE SPEED CONTROL FUNCTIONS ---
-   const _setSpeedForAllMedia = (newSpeed) => {
-    const clampedSpeed = Math.max(0.1, Math.min(newSpeed, 16.0));
-    desiredSpeed = clampedSpeed;
-    
-    queryAllMediaDeep().forEach(media => { media.playbackRate = desiredSpeed; });
-    
-    chrome.storage.sync.set({ 'videoSpeed': desiredSpeed });
-    updateHudDisplay();
-    chrome.runtime.sendMessage({ action: 'updateBadge', speed: desiredSpeed });
-  };
-  
-  const setSpeedForAllMedia = debounce(_setSpeedForAllMedia, 50);
+  document.addEventListener('mousemove', throttle((e) => {
+    if (!hudElement) return;
 
-  const applySpeedToMedia = (media) => {
-    if (media.getAttribute('data-speed-controller-active')) return;
-    media.setAttribute('data-speed-controller-active', 'true');
-    
-    media.playbackRate = desiredSpeed; 
+    let isOverVideo = false;
+    for (const container of activeVideoContainers) {
+      if (container.contains(e.target)) {
+        isOverVideo = true;
+        break;
+      }
+    }
 
-    media.addEventListener('ratechange', () => { if (media.playbackRate !== desiredSpeed) media.playbackRate = desiredSpeed; });
-    media.addEventListener('loadeddata', () => { media.playbackRate = desiredSpeed; });
-    attachHudVisibilityEvents(media);
-    createHud();
-  };
+    const isOverHud = hudElement.contains(e.target);
 
-  const processAllMedia = () => { queryAllMediaDeep().forEach(applySpeedToMedia); };
+    if (isOverVideo) {
+      showHud();
+      startHideTimer(5000);
+    } else if (isOverHud) {
+      // FIX #3: If mouse is over the HUD, always show it and reset the timer.
+      // This allows you to move the HUD even if it's far from a video.
+      showHud();
+      startHideTimer(5000);
+    } else {
+      // If the mouse is not over a video OR the HUD, hide the HUD.
+      // The hide timer is already running from the last time we moved over a safe zone.
+    }
+  }, 100));
 
-  // --- INITIALIZATION AND LISTENERS for the controller ---
+  // --- INITIALIZATION AND LISTENERS ---
   (async () => {
-      const currentHostname = window.location.hostname;
-        const data = await chrome.storage.sync.get(['siteRules', 'videoSpeed', 'speedStep', 'skipAmount']);
-        const siteRules = data.siteRules || {};
-        const globalSpeed = data.videoSpeed || 1.0;
-
-        speedStep = data.speedStep || 0.10;
-        skipAmount = data.skipAmount || 5;
-
-      if (siteRules[currentHostname]) {
-            desiredSpeed = siteRules[currentHostname];
-        } else {
-            desiredSpeed = globalSpeed;
-        }
-
-      _setSpeedForAllMedia(desiredSpeed);
-      processAllMedia();
+    const data = await chrome.storage.sync.get(['siteRules', 'videoSpeed', 'speedStep', 'skipAmount']);
+    speedStep = data.speedStep || 0.10;
+    skipAmount = data.skipAmount || 5;
+    const siteRules = data.siteRules || {};
+    const globalSpeed = data.videoSpeed || 1.0;
+    const currentHostname = window.location.hostname;
+    desiredSpeed = siteRules[currentHostname] || globalSpeed;
+    
+    _setSpeedForAllMedia(desiredSpeed);
+    runDetection();
   })();
 
-  chrome.storage.onChanged.addListener((changes) => {
-    if (changes.videoSpeed) {
-      _setSpeedForAllMedia(changes.videoSpeed.newValue);
-    }
+  document.addEventListener('fullscreenchange', () => {
+    debounce(runDetection, 100)();
   });
 
-   const observer = new MutationObserver(() => processAllMedia());
+  const observer = new MutationObserver(debounce(runDetection, 500));
   observer.observe(document.body, { childList: true, subtree: true });
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (!chrome.runtime?.id) return;
     if (message.action === 'getSpeed') {
       sendResponse({ speed: desiredSpeed });
       return true;
