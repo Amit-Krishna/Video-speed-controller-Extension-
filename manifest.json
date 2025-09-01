@@ -3,12 +3,15 @@
   "name": "__MSG_extName__",
   "default_locale": "en",
   "description": "__MSG_extDescription__",
-  "version": "1.0.0",
+  "version": "1.1.0",
 
   "permissions": [
     "scripting",
     "activeTab",
     "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -43,18 +46,12 @@
     }
   },
 
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "css": ["hud.css"],  
-      "all_frames": true
-    }
-  ],
-
   "web_accessible_resources": [
     {
-      "resources": ["welcome.html"], 
+      "resources": [
+        "welcome.html",
+        "hud.css"
+      ], 
       "matches": ["<all_urls>"]
     }
   ]

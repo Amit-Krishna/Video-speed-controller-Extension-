@@ -1,47 +1,110 @@
-
-// File: popup.js (New version with site exclusion logic)
+// --- ELEMENT SELECTORS ---
+const speedSlider = document.getElementById('speedSlider');
+const speedValue = document.getElementById('speedValue');
+const presetButtons = document.getElementById('preset-buttons');
+const toggleButton = document.getElementById('toggle-site-button');
+const shortcutsLink = document.getElementById('shortcuts-link');
 
 // --- GLOBAL VARIABLES ---
 let currentTab;
 let currentHostname;
 let excludedSites = [];
-const toggleButton = document.getElementById('toggle-site-button');
 
-
-// --- INITIALIZATION ---
-document.addEventListener('DOMContentLoaded', async () => {
-  
-  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-  currentTab = tabs[0];
-  
-  if (currentTab.url.startsWith('chrome://')) {
-    toggleButton.textContent = 'Cannot run on this page';
-    toggleButton.disabled = true;
-    return;
+// --- CORE FUNCTIONS ---
+function updateUI(speed) {
+  if (typeof speed !== 'number' || isNaN(speed)) {
+    speed = 1.0; // Default to 1.0 if speed is invalid
   }
-  
-  currentHostname = new URL(currentTab.url).hostname;
-  
-  const data = await chrome.storage.sync.get(['excludedSites']);
-  excludedSites = data.excludedSites || [];
-  
-  updateToggleButton();
-});
+  const formattedSpeed = speed.toFixed(2);
+  speedValue.textContent = `${formattedSpeed}x`;
+  speedSlider.value = speed;
+}
 
-// --- UI FUNCTIONS ---
+function applySpeed(speed) {
+  // Save the desired speed globally
+  chrome.storage.sync.set({ 'videoSpeed': speed });
+
+  // Send a message to the content script to apply the speed immediately
+  chrome.tabs.sendMessage(currentTab.id, {
+    action: 'set-speed',
+    speed: speed
+  }, (response) => {
+    if (chrome.runtime.lastError) {
+      // This can happen if the content script isn't injected yet, which is okay.
+      // The content script will pick up the saved speed on its own.
+    }
+  });
+}
+
 const updateToggleButton = () => {
   const isExcluded = excludedSites.includes(currentHostname);
   if (isExcluded) {
-    toggleButton.textContent = chrome.i18n.getMessage("enableOnSite", currentHostname);
+    toggleButton.textContent = `Enable on ${currentHostname}`;
     toggleButton.className = 'disabled';
   } else {
-    toggleButton.textContent = chrome.i18n.getMessage("disableOnSite", currentHostname);
+    toggleButton.textContent = `Disable on ${currentHostname}`;
     toggleButton.className = 'enabled';
   }
+  toggleButton.disabled = false;
 };
+
+// --- INITIALIZATION ---
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    currentTab = tabs[0];
+
+    // THE FIX: Check if `currentTab.url` exists and is a valid web URL.
+    if (!currentTab || !currentTab.url || !currentTab.url.startsWith('http')) {
+      document.body.innerHTML = '<div style="padding: 10px; text-align: center;">Not available on this page.</div>';
+      return;
+    }
+    
+    currentHostname = new URL(currentTab.url).hostname;
+    
+    // Load exclusion settings and update the button
+    const data = await chrome.storage.sync.get(['excludedSites']);
+    excludedSites = data.excludedSites || [];
+    updateToggleButton();
+
+    // Get the current speed from the content script to initialize the UI
+    chrome.tabs.sendMessage(currentTab.id, { action: 'getSpeed' }, (response) => {
+      if (chrome.runtime.lastError) {
+        // If content script isn't ready, get speed from storage as a fallback
+        chrome.storage.sync.get('videoSpeed', (data) => {
+            updateUI(data.videoSpeed || 1.0);
+        });
+        return;
+      }
+      if (response && typeof response.speed !== 'undefined') {
+        updateUI(response.speed);
+      } else {
+        updateUI(1.0);
+      }
+    });
+
+  } catch (error) {
+    console.error("Error initializing popup:", error);
+    document.body.innerHTML = '<div style="padding: 10px; text-align: center;">An error occurred.</div>';
+  }
+});
 
 
 // --- EVENT LISTENERS ---
+speedSlider.addEventListener('input', (event) => {
+  const newSpeed = parseFloat(event.target.value);
+  updateUI(newSpeed);
+  applySpeed(newSpeed);
+});
+
+presetButtons.addEventListener('click', (event) => {
+  if (event.target.tagName === 'BUTTON' && event.target.dataset.speed) {
+    const newSpeed = parseFloat(event.target.dataset.speed);
+    updateUI(newSpeed);
+    applySpeed(newSpeed);
+  }
+});
+
 toggleButton.addEventListener('click', async () => {
   const isExcluded = excludedSites.includes(currentHostname);
 
@@ -55,69 +118,12 @@ toggleButton.addEventListener('click', async () => {
   
   updateToggleButton();
   
+  // Reload the tab to apply/remove the content script
   chrome.tabs.reload(currentTab.id);
+  window.close(); // Close the popup after action
 });
 
-
-const speedSlider = document.getElementById('speedSlider');
-const speedValue = document.getElementById('speedValue');
-
-document.addEventListener('DOMContentLoaded', () => {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const activeTabId = tabs[0].id;
-    chrome.scripting.executeScript({
-      target: { tabId: activeTabId },
-      function: () => {
-        const video = document.querySelector('video');
-        return video ? video.playbackRate : 1.0;
-      }
-    }, (injectionResults) => {
-      if (chrome.runtime.lastError || !injectionResults || !injectionResults.length) {
-        return;
-      }
-      const currentPageSpeed = injectionResults[0].result;
-      updateUI(currentPageSpeed);
-    });
-  });
-});
-
-function applySpeed(speed) {
-  chrome.storage.sync.set({ 'videoSpeed': speed });
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const activeTabId = tabs[0].id;
-    chrome.scripting.executeScript({
-      target: { tabId: activeTabId },
-      function: (newSpeed) => {
-        const videos = document.querySelectorAll('video');
-        videos.forEach(video => video.playbackRate = newSpeed);
-      },
-      args: [speed]
-    });
-  });
-}
-
-function updateUI(speed) {
-  const formattedSpeed = (speed % 1 === 0) ? `${speed}.0` : speed.toFixed(2);
-  speedValue.textContent = `${formattedSpeed}x`;
-  speedSlider.value = speed;
-}
-
-speedSlider.addEventListener('input', (event) => {
-  const newSpeed = parseFloat(event.target.value);
-  updateUI(newSpeed);
-  applySpeed(newSpeed);
-});
-
-document.getElementById('preset-buttons').addEventListener('click', (event) => {
-  if (event.target.tagName === 'BUTTON') {
-    const newSpeed = parseFloat(event.target.dataset.speed);
-    updateUI(newSpeed);
-    applySpeed(newSpeed);
-  }
-});
-
-
-document.getElementById('shortcuts-link').addEventListener('click', (event) => {
-  event.preventDefault(); 
+shortcutsLink.addEventListener('click', (event) => {
+  event.preventDefault();
   chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
 });
