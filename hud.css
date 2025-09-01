@@ -1,6 +1,7 @@
-#vsc-hud-container {
+/* Use a class selector to allow the self-destruction logic to work correctly */
+.vsc-hud-container-class {
   position: fixed;
-  z-index: 2147483647 !important; /* Added !important for robustness */
+  z-index: 2147483647 !important;
   background-color: rgba(0, 0, 0, 0.75);
   color: white;
   border-radius: 8px;
@@ -13,21 +14,19 @@
   cursor: grab;
   user-select: none;
   
-  /* Auto-hiding styles */
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
   pointer-events: none; 
 }
 
-/* This class will be toggled by JavaScript to show the HUD */
-#vsc-hud-container.vsc-hud-visible {
+.vsc-hud-container-class.vsc-hud-visible {
     opacity: 1;
     visibility: visible;
     pointer-events: auto; 
 }
 
-#vsc-hud-container button {
+.vsc-hud-container-class button {
   background-color: #555;
   color: white;
   border: 1px solid #777;
@@ -36,7 +35,7 @@
   padding: 4px 8px;
 }
 
-#vsc-hud-container button:hover {
+.vsc-hud-container-class button:hover {
   background-color: #777;
 }
 
