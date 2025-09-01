@@ -1,4 +1,4 @@
-/* Use a class selector to allow the self-destruction logic to work correctly */
+
 .vsc-hud-container-class {
   position: fixed;
   z-index: 2147483647 !important;
